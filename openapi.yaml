@@ -1,0 +1,563 @@
+openapi: 3.0.3
+info:
+  title: CivicEar
+  version: 0.1.0
+  description: >-
+    Low-cost smart-city noise classifier for Raspberry Pi–class nodes using MFCC
+    with SVM/KNN. Emits typed urban sound events beyond dB maps for environmental
+    enforcement and gated public-safety notification.
+  x-product-slug: ai-iot-civicear
+  x-source: ai-in-iot/1809.00238v1/
+servers:
+  - url: https://api.example.com
+tags:
+  - name: Zones
+  - name: Nodes
+  - name: ModelPacks
+  - name: Events
+  - name: Complaints
+paths:
+  /v1/zones:
+    get:
+      operationId: listCityZones
+      tags: [Zones]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Zones
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeCityZone" }
+    post:
+      operationId: createCityZone
+      tags: [Zones]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CityZoneCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeCityZone" }
+  /v1/nodes:
+    get:
+      operationId: listNoiseNodes
+      tags: [Nodes]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: zoneId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Nodes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeNoiseNode" }
+    post:
+      operationId: registerNoiseNode
+      tags: [Nodes]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NoiseNodeCreate" }
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeNoiseNode" }
+  /v1/nodes/{nodeId}/health:
+    post:
+      operationId: reportNodeHealth
+      tags: [Nodes]
+      security: [{ ApiKeyAuth: [] }]
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HealthSample" }
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeNoiseNode" }
+  /v1/model-packs:
+    get:
+      operationId: listModelPacks
+      tags: [ModelPacks]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Model packs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeModelPack" }
+    post:
+      operationId: createModelPack
+      tags: [ModelPacks]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ModelPackCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeModelPack" }
+  /v1/model-packs/{packId}/promote:
+    post:
+      operationId: promoteModelPack
+      tags: [ModelPacks]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Promoted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeModelPack" }
+  /v1/events:
+    get:
+      operationId: listNoiseEvents
+      tags: [Events]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: classLabel
+          in: query
+          schema: { type: string }
+        - name: zoneId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeNoiseEvent" }
+    post:
+      operationId: ingestNoiseEvent
+      tags: [Events]
+      security: [{ ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NoiseEventCreate" }
+      responses:
+        "201":
+          description: Ingested
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeNoiseEvent" }
+  /v1/events/{eventId}/safety-notify:
+    post:
+      operationId: gateSafetyNotification
+      tags: [Events]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SafetyNotificationCreate" }
+      responses:
+        "200":
+          description: Gated decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeSafetyNotification" }
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /v1/complaints:
+    get:
+      operationId: listComplaintEnrichments
+      tags: [Complaints]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Complaints
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeComplaintEnrichment" }
+    post:
+      operationId: enrichComplaint
+      tags: [Complaints]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ComplaintEnrichmentCreate" }
+      responses:
+        "201":
+          description: Enriched
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeComplaintEnrichment" }
+  /v1/complaints/{complaintId}/override:
+    post:
+      operationId: overrideComplaintClass
+      tags: [Complaints]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: complaintId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [classLabel, clerkId]
+              properties:
+                classLabel: { type: string }
+                clerkId: { type: string }
+                note: { type: string }
+      responses:
+        "200":
+          description: Overridden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeComplaintEnrichment" }
+components:
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+
+  responses:
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    UnprocessableEntity:
+      description: Unprocessable entity
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+
+    ResponseMeta:
+      type: object
+      required: [requestId, timestamp]
+      properties:
+        requestId: { type: string }
+        timestamp: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    CityZone:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        retainRawAudio: { type: boolean, default: false }
+    CityZoneCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        retainRawAudio: { type: boolean, default: false }
+    NoiseNode:
+      type: object
+      required: [id, zoneId, status]
+      properties:
+        id: { type: string }
+        zoneId: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [healthy, mic_unhealthy, offline] }
+        activeModelPackId: { type: string }
+        lat: { type: number }
+        lon: { type: number }
+    NoiseNodeCreate:
+      type: object
+      required: [zoneId, name]
+      properties:
+        zoneId: { type: string }
+        name: { type: string }
+        lat: { type: number }
+        lon: { type: number }
+    HealthSample:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [healthy, mic_unhealthy, offline] }
+        snrDb: { type: number }
+        reportedAt: { type: string, format: date-time }
+    ModelPack:
+      type: object
+      required: [id, algorithm, status]
+      properties:
+        id: { type: string }
+        algorithm: { type: string, enum: [svm_rbf, knn] }
+        status: { type: string, enum: [draft, evaluated, promoted] }
+        accuracy: { type: number }
+        hyperparameters:
+          type: object
+          additionalProperties: true
+        classes:
+          type: array
+          items: { type: string }
+    ModelPackCreate:
+      type: object
+      required: [algorithm, classes]
+      properties:
+        algorithm: { type: string, enum: [svm_rbf, knn] }
+        classes:
+          type: array
+          items: { type: string }
+        hyperparameters:
+          type: object
+          additionalProperties: true
+    NoiseEvent:
+      type: object
+      required: [id, nodeId, classLabel, detectedAt]
+      properties:
+        id: { type: string }
+        nodeId: { type: string }
+        zoneId: { type: string }
+        classLabel: { type: string }
+        confidence: { type: number }
+        splDb: { type: number }
+        modelPackId: { type: string }
+        detectedAt: { type: string, format: date-time }
+    NoiseEventCreate:
+      type: object
+      required: [nodeId, classLabel, detectedAt]
+      properties:
+        nodeId: { type: string }
+        classLabel: { type: string }
+        confidence: { type: number }
+        splDb: { type: number }
+        modelPackId: { type: string }
+        detectedAt: { type: string, format: date-time }
+    SafetyNotification:
+      type: object
+      required: [id, eventId, decision]
+      properties:
+        id: { type: string }
+        eventId: { type: string }
+        decision: { type: string, enum: [allowed, blocked, needs_corroboration] }
+        channel: { type: string }
+    SafetyNotificationCreate:
+      type: object
+      required: [channel]
+      properties:
+        channel: { type: string }
+        corroborationIds:
+          type: array
+          items: { type: string }
+    ComplaintEnrichment:
+      type: object
+      required: [id, externalTicketId]
+      properties:
+        id: { type: string }
+        externalTicketId: { type: string }
+        suggestedClass: { type: string }
+        finalClass: { type: string }
+        eventId: { type: string }
+        overridden: { type: boolean }
+    ComplaintEnrichmentCreate:
+      type: object
+      required: [externalTicketId]
+      properties:
+        externalTicketId: { type: string }
+        eventId: { type: string }
+        suggestedClass: { type: string }
+
+    DataEnvelopeCityZone:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/CityZone" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeCityZone:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/CityZone" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeNoiseNode:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/NoiseNode" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeNoiseNode:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/NoiseNode" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeModelPack:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/ModelPack" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeModelPack:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ModelPack" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeNoiseEvent:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/NoiseEvent" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeNoiseEvent:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/NoiseEvent" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeSafetyNotification:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/SafetyNotification" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeSafetyNotification:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/SafetyNotification" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeComplaintEnrichment:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/ComplaintEnrichment" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeComplaintEnrichment:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ComplaintEnrichment" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
